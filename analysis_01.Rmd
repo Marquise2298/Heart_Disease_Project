@@ -1,0 +1,228 @@
+---
+title: "Predicting the Best Model to Screen for Heart Disease"
+author: "Marquise Linnear (linnear2@illinois.edu)"
+date: "4/21/2021"
+output:
+  html_document: 
+    theme: default
+    toc: yes
+---
+
+
+
+```{r, setup, include = FALSE}
+knitr::opts_chunk$set(echo = FALSE, fig.align = 'center')
+```
+
+```{r, load-packages, include = FALSE}
+# load packages
+library("readr")
+library("rpart")
+library("caret")
+library("MLmetrics")
+```
+
+```{r read-full-data, warning = FALSE, message = FALSE}
+# read full data
+hd = readr::read_csv("hd.csv")
+
+# Cleaning Data for missing observations(rows)
+na_prop = function(x) {
+  mean(is.na(x))
+}
+hd_clean = na.omit(hd[, !sapply(hd, na_prop) > 0.33])
+
+
+
+```
+
+***
+
+## Abstract
+
+> I will be doing an analysis to create and find the best methodological model to predict the screening category  for Heart disease provided by 3 different locations.I utilized the following 1 unsupervised regression model : Decision Tree and  2 supervised regression models: Random Forest, and a K-Nearest Neighbors model in order to to predict  and used the the folloowing classification rates to evaluate the performance of each model: accuracy, preicison, and sensitivity. The Decision tree model overall was better at having accuracy rate (0.593) than the other models and had a  better precision rate for 3 class categories (v1,v2, and v3) and sensitivity rates  for class categories (v0 and v3). 
+
+***
+
+## Introduction
+
+We have data that contains information on 920 patient's health information regarding their risk in having heart disease and this data has been collected from the following 4 public institutions locations:
+Cleveland,Hungary,California, and Switzerland.
+I will be doing an analysis to create and find the best methodological regression model to identify the best screening for Heart disease based upon data given to us by the UC Irvine MAchine Learning Repository.I will be doing analysis to see if the feature variables given to us,which is the following: age, sex,cp,trestbps,chol,fbs,restecg,thalach,exang,oldpeak,ca,location,and thal, in a K-nearest neighbors, Random Forest, or a Decision tree model will provide the best prediction for screening the patients risk for heart disease.The variable that predicts the the screening result for heart disease is "num" and it is classified as the following categories : v0,v1,v2,v3,v4. Getting a result with v0 means that the patient has 0 major blood vessels with greater than 50% of the diameter narrowing and the rest of the categories is identified to have risk of having heart disease due to having 1,2,3,o4 even 4 major blood vessels present.I will be assessing to find the best model by calculating  the following metrics: highest accuracy, highest specificity (true positive rate) of the models, and the highest precision rate.This overall will let me know how well the best model can predict each category,(v0,v1,v2,v3,and v4), for  heart disease screening result that was given from the original data set.
+
+***
+
+## Methods
+
+
+
+
+### Data
+
+*Each row in the data set contains the health screening information for each each of the 740 patients that got screened for the risk fo heart disease.The columns contains the actual 15 variables included in this data set to measure the risk of heart disease , which is the following: age,sex,cp(chest pain type),trestbps( resting blood pressure), chol( blood cholesterol level), fbs(fasting blood sugar), restecg(resting electrocardiographs results), thalach(maximum heart rate achieved), exang(exercise induced angina), oldpeak(ST depression induced by exercise relative to rest), ca(number of major blood vessels),location(where the patient data came from),thal (thalassemia effect on heart), and the predicted y- variable "num". "Num" will be the response variable and the feature variables will be the rest of the columns included in the data-set.Next, I will split the data into training and testing data sets in order to evaluate the models on how well they perform without knowing the true model. The testing data set will be used to analyze the performance  of our models and the training data set will be used to fit our regression models to.*
+
+```{r}
+#set seed for reproducibility 
+set.seed(432)
+hd_idx=createDataPartition(hd_clean$num,p=0.80,list=FALSE)
+#Training data-set
+hd_trn=hd_clean[hd_idx,]
+#Testing data-set
+hd_tst=hd_clean[-hd_idx,]
+```
+
+
+### Modeling
+
+*The modeling methods that I will be considering using are K-nearest neighbors, Decision Tree, and a Random Forest model.The models will all be fitted by using the training data-set and then the testing data-set will be used to evaluate the models performance. I will be compare the supervised regression models by evaluating the accuracy of the models, the sensitivity (true positive rate), and the Precision of each model.I will determine the best model that can screen for heart heart disease by seeing which model provide the highest accuracy and specificity precision*
+
+```{r}
+#(K-Nearest Neighbors Modeling)
+
+#set seed for reproducibility 
+set.seed(432)
+#Utilizing Cross-Validation with 10-Folds
+cv_10=trainControl(method="cv",number=10)
+
+#Setting up KNN Model and fitting to training data-set
+knn_mod=train(num~.,data=hd_trn,method="knn",trControl=cv_10,preProcess=c("center","scale"),tuneLength=11)
+
+# making predictions using the testing data-set for each Class Category 
+pred_tst=predict(knn_mod,hd_tst,type="raw")
+
+#Confusion Matrix
+b=confusionMatrix(data=pred_tst,reference=as.factor(hd_tst$num))
+
+#Sensitivity rates per each Class (v0,v1,v2,v3,v4)
+y1=b$byClass[1:5,1]
+
+#Accuracy rates per each Class (v0,v1,v2,v3,v4)
+y3=b$overall[1]
+
+#Precision rates per each Class (v0,v1,v2,v3,v4)
+y2=b$byClass[1:5,5]
+
+
+
+#(Decision Tree Modeling)
+
+#set Seed for reproducibility
+set.seed(432)
+
+# Setting up Decision Tree Model and fitting it to the training data-set
+Dt_model=train(num~.,data=hd_trn,method="rpart",trControl=cv_10,preProcess=c("center","scale"),tuneLength=11)
+
+# making predictions using the testing data-set for each class category
+pred_tst2=predict(Dt_model,hd_tst,type="raw")
+
+#Confusion Matrix 
+c=confusionMatrix(data=pred_tst2,reference=as.factor(hd_tst$num))
+
+#Sensitivity rates per each Class (v0,v1,v2,v3,v4)
+y5=c$byClass[1:5,1]
+#Accuracy rates per each Class (v0,v1,v2,v3,v4)
+y7=c$overall[1]
+#Precision rates per each Class (v0,v1,v2,v3,v4)
+y4=c$byClass[1:5,5]
+
+
+#set Seed for reproducibility
+set.seed(432)
+
+#Setting up Random Forest Model and fitting it to the training data-set
+rf_model=train(num~.,data=hd_trn,method="rf",trControl=cv_10,preProcess=c("center","scale"),tuneLength=sqrt(ncol(hd_trn)))
+
+# making predictions using the testing data-set for each class category
+pred_tst3=predict(rf_model,hd_tst,type="raw")
+
+#COnfusion Matrix
+d=confusionMatrix(data=pred_tst3,reference=as.factor(hd_tst$num))
+
+#Sensitivity rates per each Class (v0,v1,v2,v3,v4)
+y9=d$byClass[1:5,1]
+
+#Accuracy rates per each Class (v0,v1,v2,v3,v4)
+y11=d$overall[1]
+
+#Precision rates per each Class (v0,v1,v2,v3,v4)
+y6=d$byClass[1:5,5]
+
+
+
+
+
+
+
+```
+
+
+
+
+
+
+***
+
+## Results
+
+*Overall, we can see that the best model by analyzing the testing precision rates, accuracy rates, sensitivity rates per each model that the Decision tree is the better at predicting screening stages for heart disease than the Random Forest and K-Nearest Neighbors Model. The Decision tree overall had a  higher accuracy rate of 0.5931, the K-nearest neighbors rate was the lowest with 0.5517, and the Random Forest rate was 0.5724.The sensitivity rate or the true positive rates that the Decision tree model can predict by class category for v0 and v3 was the highest compared to against the other models.The random forest was better at predicting a screening class category of v1 and the KNN model was better a t predicting a screening class category of v2. None of the models were able to predict for having a patient with 4 major blood vessels , v4, due to still missing observations in the data-set.  We can see that the Decision tree model was better at predicting the true positive rates for more than one class category. Lastly, the Decision tree model is better at predicting  precision rates for class categories at v1(0.60),v2(0.50), and v3(0.24)  than the other models and the KNN model is only better at predicting the precision rates for a class category at v0 (0.776).*
+
+```{r}
+#Sensitivity rates class category (v0,v1,v2,v3,v4) for each Model Graph
+y=c(y1,y5,y9)
+x=c("K-Nearest Neighbors","Decision Tree","Random Forest")
+plot(y,xaxt="n",xlab="Models",type="o",col="red",ylab ="Sensitivity Rates",main="Sensitivity Rates per each Class")
+axis(1,at=1,labels="KN")
+axis(1,at=6,labels="DT")
+axis(1,at=11,labels="RF")
+text(y,labels = round(y,digits = 3),cex=0.80,col='blue')
+
+#Accuracy rates per each Model  Graph 
+g=c(y3,y7,y11)
+plot(g,xaxt="n",xlab="Models",type="o",col="blue",ylab="Accuracy Rates",main = "Accuracy Rates")
+axis(1,at=1:3,labels=c("K-Nearest Neighbors","Decision Tree","Random Forest"))
+text(g,labels = round(g,digits = 4),cex=0.80,col='red')
+
+#Precision rates by class category (v0,v1,v2,v3,v4) for each Model Graph
+h=c(y2,y4,y6)
+plot(h,xaxt="n",xlab="Models",type="b",col="green",ylab ="Precision Rates",main = "Precision Rates per each Class")
+axis(1,at=1,labels="KN")
+axis(1,at=6,labels="DT")
+axis(1,at=11,labels="RF")
+text(h,labels = round(h,digits = 3),cex=0.80,col='blue')
+
+
+```
+
+
+***
+
+## Discussion
+
+*Overall, the results show that a Decision tree regression model had the highest accuracy for predicting the true screening for class category for heart disease, but it wasn't too high enough to trust this model due to it only being 0.593. This means that this model can predict 59.3% of the correct screen class categories (v0,v1,v2,v3,v4).The K-Nearest Neighbors model accuracy rate  was 0.5517 and the Random Forest model was 0.5724 , which are both close to the Decision tree model rate , so neither of these provide a very good accuracy rate to determine the screening class category a patient can be at risk fo heart disease. Also, thee models could have a better accuracy rate if making the a patient with 0 major blood vessels,v0, would be classified as factor of "0"  in not having heart disease and the other class categories, v1 to v4, would be classified as a factor of "1" in having heart disease. Furthermore, the tuning parameters for each model tends to have influence in which model would be the best as well too.The precision rates for each Decision tree model was the highest for only two class categories , but not the other two. The precision rates for classifying a class category for 1 major blood vessel, v0, for every model, but is less than 0.70 after v0 for each model, so  each model lose precision after v0.*
+
+
+***
+
+## Appendix
+
+
+```{r}
+# Best Tuning Parameter for KN (K- Nearest Neighbors) Model
+knn_mod$bestTune
+# Best Tuning Parameter for DT (Decision Tree) Model 
+Dt_model$bestTune
+#Best Tuning Parameter for RF (Random Forest) Model
+rf_model$bestTune
+
+
+```
+
+
+
+
+
+
+
+
+
+
