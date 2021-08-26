@@ -1,1 +1,2 @@
 # Heart_Disease_Project
+## I will be doing an analysis to create and find the best methodological model to predict the screening category  for Heart disease provided by 3 different locations.I utilized the following 1 unsupervised regression model : Decision Tree and  2 supervised regression models: Random Forest and a K-Nearest Neighbors model in order to to predict  and used the the folloowing classification rates to evaluate the performance of each model: accuracy, preicison, and sensitivity.
